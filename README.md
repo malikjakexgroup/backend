@@ -1,5 +1,8 @@
 # book-backend (WordPress plugin)
 
+> 🧩 Part of the **[Book Platform](https://github.com/malikjakexgroup/book-platform)** — a multi-repo book discovery app.
+> Repos: **book-backend** · [book-web](https://github.com/malikjakexgroup/book-web) · [book-docs](https://github.com/malikjakexgroup/book-docs)
+
 The entire backend: a WordPress plugin that proxies Google Books. WordPress supplies
 the pieces the old multi-service design needed separately:
 
