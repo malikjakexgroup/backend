@@ -3,6 +3,10 @@
 > 🧩 Part of the **[Book Platform](https://github.com/malikjakexgroup/book-platform)** — a multi-repo book discovery app.
 > Repos: **book-backend** · [book-web](https://github.com/malikjakexgroup/book-web) · [book-docs](https://github.com/malikjakexgroup/book-docs)
 
+[![CI](https://github.com/malikjakexgroup/book-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/malikjakexgroup/book-backend/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PHP](https://img.shields.io/badge/PHP-8.1%2B-777bb4.svg)](composer.json)
+
 The entire backend: a WordPress plugin that proxies Google Books. WordPress supplies
 the pieces the old multi-service design needed separately:
 
