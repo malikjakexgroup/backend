@@ -62,18 +62,28 @@ function bb_rest_get_book(WP_REST_Request $req)
     $id = (string) $req['id'];
 
     $post_id = bb_find_book_post($id);
-    if ($post_id) {
-        return rest_ensure_response(bb_book_to_array($post_id)); // permanent
+    // Serve stored — but enrich once from the single-book endpoint (it carries the
+    // free-PDF download link, which the search list does not).
+    if ($post_id && metadata_exists('post', $post_id, 'links_full')) {
+        return rest_ensure_response(bb_book_to_array($post_id));
     }
 
     $data = bb_google_get($id);
     if ($data === null) {
+        if ($post_id) {
+            return rest_ensure_response(bb_book_to_array($post_id));
+        }
         return new WP_Error('unavailable', 'Google Books unavailable', array('status' => 503));
     }
     if ($data === 'not_found') {
+        if ($post_id) {
+            return rest_ensure_response(bb_book_to_array($post_id));
+        }
         return new WP_Error('not_found', 'Book not found', array('status' => 404));
     }
-    return rest_ensure_response(bb_book_to_array(bb_upsert_book($data)));
+    $pid = bb_upsert_book($data);
+    update_post_meta($pid, 'links_full', 1);
+    return rest_ensure_response(bb_book_to_array($pid));
 }
 
 function bb_rest_categories()

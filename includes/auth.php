@@ -63,6 +63,36 @@ function bb_register_auth_routes(): void
         'callback'            => 'bb_rest_me',
         'permission_callback' => '__return_true',
     ));
+    register_rest_route('books/v1', '/forgot-password', array(
+        'methods'             => 'POST',
+        'callback'            => 'bb_rest_forgot',
+        'permission_callback' => '__return_true',
+    ));
+    register_rest_route('books/v1', '/verify-otp', array(
+        'methods'             => 'POST',
+        'callback'            => 'bb_rest_verify_otp',
+        'permission_callback' => '__return_true',
+    ));
+    register_rest_route('books/v1', '/reset-password', array(
+        'methods'             => 'POST',
+        'callback'            => 'bb_rest_reset',
+        'permission_callback' => '__return_true',
+    ));
+}
+
+/** Check an OTP without consuming it — used for the "enter code" step. */
+function bb_rest_verify_otp(WP_REST_Request $req)
+{
+    $email = sanitize_email((string) $req->get_param('email'));
+    $otp   = trim((string) $req->get_param('otp'));
+    $user  = get_user_by('email', $email);
+    $hash  = $user ? get_user_meta($user->ID, 'bb_otp', true) : '';
+    $expires = $user ? (int) get_user_meta($user->ID, 'bb_otp_expires', true) : 0;
+
+    if (!$user || !$hash || time() > $expires || !wp_check_password($otp, $hash)) {
+        return new WP_Error('bad_otp', 'Invalid or expired code', array('status' => 400));
+    }
+    return rest_ensure_response(array('ok' => true));
 }
 
 function bb_rest_register(WP_REST_Request $req)
@@ -111,4 +141,61 @@ function bb_rest_me(WP_REST_Request $req)
         return new WP_Error('unauthorized', 'Not logged in', array('status' => 401));
     }
     return rest_ensure_response(bb_user_public($user));
+}
+
+/**
+ * Step 1 of password reset: email a 6-digit OTP code (valid 10 minutes).
+ * The code's hash is stored in user meta. Needs SMTP configured to actually send.
+ * Always returns success so we never reveal which emails have accounts.
+ */
+function bb_rest_forgot(WP_REST_Request $req)
+{
+    $email = sanitize_email((string) $req->get_param('email'));
+    if (!is_email($email)) {
+        return new WP_Error('bad_request', 'Please enter a valid email address', array('status' => 400));
+    }
+    $user = get_user_by('email', $email);
+    if ($user) {
+        $otp = str_pad((string) wp_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        update_user_meta($user->ID, 'bb_otp', wp_hash_password($otp));
+        update_user_meta($user->ID, 'bb_otp_expires', time() + 600); // 10 minutes
+        wp_mail(
+            $email,
+            'Your Book App password reset code',
+            "Hi,\n\nYour password reset code is: {$otp}\n\nIt expires in 10 minutes. "
+                . "If you didn't request this, you can ignore this email.\n\n— Book App"
+        );
+    }
+    return rest_ensure_response(array(
+        'message' => 'If an account exists for that email, a 6-digit code has been sent.',
+    ));
+}
+
+/**
+ * Step 2 of password reset: verify the OTP and set the new password.
+ * On success returns a fresh auth token so the user is logged straight in.
+ */
+function bb_rest_reset(WP_REST_Request $req)
+{
+    $email    = sanitize_email((string) $req->get_param('email'));
+    $otp      = trim((string) $req->get_param('otp'));
+    $password = (string) $req->get_param('password');
+
+    if (strlen($password) < 6) {
+        return new WP_Error('bad_request', 'Password must be at least 6 characters', array('status' => 400));
+    }
+    $user = get_user_by('email', $email);
+    $hash = $user ? get_user_meta($user->ID, 'bb_otp', true) : '';
+    $expires = $user ? (int) get_user_meta($user->ID, 'bb_otp_expires', true) : 0;
+
+    if (!$user || !$hash || time() > $expires || !wp_check_password($otp, $hash)) {
+        return new WP_Error('bad_otp', 'Invalid or expired code', array('status' => 400));
+    }
+
+    wp_set_password($password, $user->ID);
+    delete_user_meta($user->ID, 'bb_otp');
+    delete_user_meta($user->ID, 'bb_otp_expires');
+
+    $token = bb_issue_token($user->ID);
+    return rest_ensure_response(array('token' => $token, 'user' => bb_user_public($user)));
 }

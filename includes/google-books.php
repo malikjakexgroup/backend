@@ -17,8 +17,10 @@ function bb_google_url($path, array $args): string
 /** Map a Google Books `volume` item onto our stored fields. */
 function bb_normalize(array $item): array
 {
-    $vi  = $item['volumeInfo'] ?? array();
-    $img = $vi['imageLinks'] ?? array();
+    $vi     = $item['volumeInfo'] ?? array();
+    $img    = $vi['imageLinks'] ?? array();
+    $access = $item['accessInfo'] ?? array();
+    $pdf    = $access['pdf'] ?? array();
     return array(
         'google_id'   => $item['id'],
         'title'       => $vi['title'] ?? null,
@@ -30,6 +32,10 @@ function bb_normalize(array $item): array
         'pages'       => $vi['pageCount'] ?? null,
         'categories'  => $vi['categories'] ?? array(),
         'rating'      => $vi['averageRating'] ?? null,
+        // Legal read/download links: preview works for all; pdf only when free.
+        'preview_link' => $access['webReaderLink'] ?? ($vi['previewLink'] ?? ($vi['infoLink'] ?? null)),
+        'pdf_link'     => (!empty($pdf['isAvailable']) && !empty($pdf['downloadLink']))
+            ? $pdf['downloadLink'] : null,
     );
 }
 

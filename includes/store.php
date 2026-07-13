@@ -49,6 +49,8 @@ function bb_upsert_book(array $data): int
     update_post_meta($post_id, 'pages', $data['pages']);
     update_post_meta($post_id, 'categories', $data['categories']);
     update_post_meta($post_id, 'rating', $data['rating']);
+    update_post_meta($post_id, 'preview_link', $data['preview_link'] ?? '');
+    update_post_meta($post_id, 'pdf_link', $data['pdf_link'] ?? '');
     update_post_meta($post_id, 'cached_at', time());
 
     return $post_id;
@@ -88,5 +90,7 @@ function bb_book_to_array(int $post_id): array
         'pages'       => $pages !== '' ? (int) $pages : null,
         'categories'  => get_post_meta($post_id, 'categories', true) ?: array(),
         'rating'      => get_post_meta($post_id, 'rating', true) ?: null,
+        'preview_link' => get_post_meta($post_id, 'preview_link', true) ?: null,
+        'pdf_link'     => get_post_meta($post_id, 'pdf_link', true) ?: null,
     );
 }

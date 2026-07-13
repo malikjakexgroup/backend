@@ -33,3 +33,28 @@ add_action('rest_api_init', function () {
         return $served;
     });
 }, 15);
+
+// Send outgoing mail (OTP codes) via SMTP when credentials are set in wp-config.php:
+//   define('BB_SMTP_USER', 'you@gmail.com');
+//   define('BB_SMTP_PASS', 'your-16-char-app-password');
+// Force a valid From address (Gmail requires it to match the authenticated user, and
+// WordPress's default "wordpress@localhost" is rejected as invalid).
+add_filter('wp_mail_from', function ($from) {
+    return (defined('BB_SMTP_USER') && BB_SMTP_USER) ? BB_SMTP_USER : $from;
+});
+add_filter('wp_mail_from_name', function ($name) {
+    return (defined('BB_SMTP_USER') && BB_SMTP_USER) ? 'Book App' : $name;
+});
+add_action('phpmailer_init', function ($mailer) {
+    if (!defined('BB_SMTP_USER') || !BB_SMTP_USER) {
+        return;
+    }
+    $mailer->isSMTP();
+    $mailer->Host       = defined('BB_SMTP_HOST') ? BB_SMTP_HOST : 'smtp.gmail.com';
+    $mailer->Port       = defined('BB_SMTP_PORT') ? BB_SMTP_PORT : 587;
+    $mailer->SMTPAuth   = true;
+    $mailer->Username   = BB_SMTP_USER;
+    $mailer->Password   = BB_SMTP_PASS;
+    $mailer->SMTPSecure = 'tls';
+    $mailer->setFrom(BB_SMTP_USER, 'Book App');
+});
